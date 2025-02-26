@@ -1,0 +1,57 @@
+services:
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:latest
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - '4358:80/tcp'
+    env_file:
+      - pihole.env
+    volumes:
+      - './Pi-hole/etc-pihole:/etc/pihole'
+      - './Pi-hole/etc-dnsmasq.d:/etc/dnsmasq.d'
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+    networks:
+      - dns
+
+  nginx:
+    container_name: nginx
+    image: 'jc21/nginx-proxy-manager:latest'
+    restart: unless-stopped
+    env_file:
+      - nginx.env
+    ports:
+      - '80:80'
+      - '81:81'
+      - '443:443'
+    volumes:
+      - ./nginx/data:/data
+      - ./nginx/letsencrypt:/etc/letsencrypt
+    networks:
+      - home
+    depends_on:
+      - pihole
+
+  homeassistant:
+    container_name: homeassistant
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    env_file:
+      - homeassistant.env
+    ports:
+      - '8123:8123'
+    volumes:
+      - /home-assistant/config:/config
+      - /run/dbus:/run/dbus:ro
+    restart: unless-stopped
+    privileged: true
+    networks:
+      - home
+    depends_on:
+      - nginx
+
+networks:
+  home:
+  dns:
